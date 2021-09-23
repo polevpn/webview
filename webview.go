@@ -83,6 +83,12 @@ type WebView interface {
 	// a background thread.
 	Terminate()
 
+	//show webview windows
+	Show()
+
+	//hide webview windows
+	Hide()
+
 	// Dispatch posts a function to be executed on the main thread. You normally
 	// do not need to call this function, unless you want to tweak the native
 	// window.
@@ -173,6 +179,14 @@ func (w *webview) Run() {
 
 func (w *webview) Terminate() {
 	C.webview_terminate(w.w)
+}
+
+func (w *webview) Show() {
+	C.webview_show(w.w)
+}
+
+func (w *webview) Hide() {
+	C.webview_hide(w.w)
 }
 
 func (w *webview) Window() unsafe.Pointer {

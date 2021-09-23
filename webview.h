@@ -32,6 +32,7 @@
 extern "C" {
 #endif
 
+
 typedef void *webview_t;
 
 // Creates a new webview instance. If debug is non-zero - developer tools will
@@ -52,6 +53,12 @@ WEBVIEW_API void webview_run(webview_t w);
 // Stops the main loop. It is safe to call this function from another other
 // background thread.
 WEBVIEW_API void webview_terminate(webview_t w);
+
+//show webview window
+WEBVIEW_API void webview_show(webview_t w);
+
+//hide webview window
+WEBVIEW_API void webview_hide(webview_t w);
 
 // Posts a function to be executed on the main thread. You normally do not need
 // to call this function, unless you want to tweak the native window.
@@ -456,6 +463,9 @@ public:
                        static_cast<gtk_webkit_engine *>(arg)->terminate();
                      }),
                      this);
+
+    g_signal_connect(G_OBJECT(m_window), "delete-event",  G_CALLBACK(gtk_webkit_engine::hideWindow), this);
+
     // Initialize webview widget
     m_webview = webkit_web_view_new();
     WebKitUserContentManager *manager =
@@ -504,6 +514,23 @@ public:
   void *window() { return (void *)m_window; }
   void run() { gtk_main(); }
   void terminate() { gtk_main_quit(); }
+
+  void hide(){
+      gtk_widget_hide(m_window);
+  }
+
+  static void hideWindow(GtkWidget *window, GdkEvent *event,gpointer arg){
+
+      gtk_widget_hide(window);
+  }
+
+  void show(){
+      gtk_widget_show_all(m_window);
+      gtk_window_present(GTK_WINDOW(m_window));
+
+  }
+
+
   void dispatch(std::function<void()> f) {
     g_idle_add_full(G_PRIORITY_HIGH_IDLE, (GSourceFunc)([](void *f) -> int {
                       (*static_cast<dispatch_fn_t *>(f))();
@@ -551,7 +578,6 @@ public:
     webkit_web_view_run_javascript(WEBKIT_WEB_VIEW(m_webview), js.c_str(), NULL,
                                    NULL, NULL);
   }
-
 private:
   virtual void on_message(const std::string msg) = 0;
   GtkWidget *m_window;
@@ -709,6 +735,9 @@ public:
   }
   ~cocoa_wkwebview_engine() { close(); }
   void *window() { return (void *)m_window; }
+
+  void show() {}
+  void hide() {}
   void terminate() {
     close();
     ((void (*)(id, SEL, id))objc_msgSend)("NSApp"_cls, "terminate:"_sel,
@@ -1157,6 +1186,8 @@ public:
     }
   }
   void *window() { return (void *)m_window; }
+  void hide() {}
+  void show() {}
   void terminate() { PostQuitMessage(0); }
   void dispatch(dispatch_fn_t f) {
     PostThreadMessage(m_main_thread, WM_APP, 0, (LPARAM) new dispatch_fn_t(f));
@@ -1315,6 +1346,14 @@ WEBVIEW_API void webview_run(webview_t w) {
 
 WEBVIEW_API void webview_terminate(webview_t w) {
   static_cast<webview::webview *>(w)->terminate();
+}
+
+WEBVIEW_API void webview_show(webview_t w) {
+  static_cast<webview::webview *>(w)->show();
+}
+
+WEBVIEW_API void webview_hide(webview_t w) {
+  static_cast<webview::webview *>(w)->hide();
 }
 
 WEBVIEW_API void webview_dispatch(webview_t w, void (*fn)(webview_t, void *),
