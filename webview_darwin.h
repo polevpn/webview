@@ -10,6 +10,7 @@
 
 #include <CoreGraphics/CoreGraphics.h>
 #include <objc/objc-runtime.h>
+#include <iostream>
 
 #define NSBackingStoreBuffered 2
 
@@ -38,15 +39,12 @@ public:
     // Application
     id app = ((id(*)(id, SEL))objc_msgSend)("NSApplication"_cls,
                                             "sharedApplication"_sel);
-    ((void (*)(id, SEL, long))objc_msgSend)(
-        app, "setActivationPolicy:"_sel, NSApplicationActivationPolicyRegular);
+    ((void (*)(id, SEL, long))objc_msgSend)(app, "setActivationPolicy:"_sel, NSApplicationActivationPolicyRegular);
 
     // Delegate
-    auto cls =
-        objc_allocateClassPair((Class) "NSResponder"_cls, "AppDelegate", 0);
+    Class cls = objc_allocateClassPair((Class)objc_getClass("NSResponder"), "NSWebviewResponder", 0);
     class_addProtocol(cls, objc_getProtocol("NSTouchBarProvider"));
-    class_addMethod(cls, "applicationShouldTerminateAfterLastWindowClosed:"_sel,
-                    (IMP)(+[](id, SEL, id) -> BOOL { return 1; }), "c@:@");
+    class_addMethod(cls, "applicationShouldTerminateAfterLastWindowClosed:"_sel, (IMP)(+[](id, SEL, id) -> BOOL { return 0; }), "c@:@");
     class_addMethod(cls, "userContentController:didReceiveScriptMessage:"_sel,
                     (IMP)(+[](id self, SEL, id, id msg) {
                       auto w =
@@ -58,76 +56,60 @@ public:
                           "UTF8String"_sel));
                     }),
                     "v@:@@");
+
     objc_registerClassPair(cls);
 
     auto delegate = ((id(*)(id, SEL))objc_msgSend)((id)cls, "new"_sel);
-    objc_setAssociatedObject(delegate, "webview", (id)this,
-                             OBJC_ASSOCIATION_ASSIGN);
-    ((void (*)(id, SEL, id))objc_msgSend)(app, sel_registerName("setDelegate:"),
-                                          delegate);
-
+    objc_setAssociatedObject(delegate, "webview", (id)this,OBJC_ASSOCIATION_ASSIGN);
+    ((void (*)(id, SEL, id))objc_msgSend)(app, sel_registerName("setDelegate:"),delegate);
     // Main window
     if (window == nullptr) {
       m_window = ((id(*)(id, SEL))objc_msgSend)("NSWindow"_cls, "alloc"_sel);
-      m_window =
-          ((id(*)(id, SEL, CGRect, int, unsigned long, int))objc_msgSend)(
+      m_window =  ((id(*)(id, SEL, CGRect, int, unsigned long, int))objc_msgSend)(
               m_window, "initWithContentRect:styleMask:backing:defer:"_sel,
               CGRectMake(0, 0, 0, 0), 0, NSBackingStoreBuffered, 0);
+
+      
     } else {
       m_window = (id)window;
     }
 
+    m_controller = ((id(*)(id, SEL))objc_msgSend)("NSWindowController"_cls, "alloc"_sel);
+    m_controller =  ((id(*)(id, SEL,id))objc_msgSend)(m_controller, "initWithWindow:"_sel,m_window);
+
     // Webview
-    auto config =
-        ((id(*)(id, SEL))objc_msgSend)("WKWebViewConfiguration"_cls, "new"_sel);
-    m_manager =
-        ((id(*)(id, SEL))objc_msgSend)(config, "userContentController"_sel);
+    auto config = ((id(*)(id, SEL))objc_msgSend)("WKWebViewConfiguration"_cls, "new"_sel);
+    m_manager = ((id(*)(id, SEL))objc_msgSend)(config, "userContentController"_sel);
     m_webview = ((id(*)(id, SEL))objc_msgSend)("WKWebView"_cls, "alloc"_sel);
 
     if (debug) {
       // Equivalent Obj-C:
       // [[config preferences] setValue:@YES forKey:@"developerExtrasEnabled"];
       ((id(*)(id, SEL, id, id))objc_msgSend)(
-          ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-          "setValue:forKey:"_sel,
-          ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                               "numberWithBool:"_sel, 1),
-          "developerExtrasEnabled"_str);
+          ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),"setValue:forKey:"_sel,
+          ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,"numberWithBool:"_sel, 1),"developerExtrasEnabled"_str);
     }
 
     // Equivalent Obj-C:
     // [[config preferences] setValue:@YES forKey:@"fullScreenEnabled"];
     ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "fullScreenEnabled"_str);
+        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),"setValue:forKey:"_sel,
+        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,"numberWithBool:"_sel, 1),"fullScreenEnabled"_str);
 
     // Equivalent Obj-C:
     // [[config preferences] setValue:@YES forKey:@"javaScriptCanAccessClipboard"];
     ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "javaScriptCanAccessClipboard"_str);
+        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),"setValue:forKey:"_sel,
+        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,"numberWithBool:"_sel, 1),"javaScriptCanAccessClipboard"_str);
 
     // Equivalent Obj-C:
     // [[config preferences] setValue:@YES forKey:@"DOMPasteAllowed"];
     ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "DOMPasteAllowed"_str);
+        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),"setValue:forKey:"_sel,
+        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,"numberWithBool:"_sel, 1),"DOMPasteAllowed"_str);
 
-    ((void (*)(id, SEL, CGRect, id))objc_msgSend)(
-        m_webview, "initWithFrame:configuration:"_sel, CGRectMake(0, 0, 0, 0),
-        config);
-    ((void (*)(id, SEL, id, id))objc_msgSend)(
-        m_manager, "addScriptMessageHandler:name:"_sel, delegate,
-        "external"_str);
+    ((void (*)(id, SEL, CGRect, id))objc_msgSend)(m_webview, "initWithFrame:configuration:"_sel, CGRectMake(0, 0, 0, 0),config);
+    ((void (*)(id, SEL, id, id))objc_msgSend)(m_manager, "addScriptMessageHandler:name:"_sel, delegate,"external"_str);
 
     init(R"script(
                       window.external = {
@@ -136,16 +118,23 @@ public:
                         },
                       };
                      )script");
-    ((void (*)(id, SEL, id))objc_msgSend)(m_window, "setContentView:"_sel,
-                                          m_webview);
-    ((void (*)(id, SEL, id))objc_msgSend)(m_window, "makeKeyAndOrderFront:"_sel,
-                                          nullptr);
+    ((void (*)(id, SEL, id))objc_msgSend)(m_window, "setContentView:"_sel,m_webview);
+    ((void (*)(id, SEL, id))objc_msgSend)(m_window, "makeKeyAndOrderFront:"_sel,nullptr);
   }
   ~cocoa_wkwebview_engine() { close(); }
   void *window() { return (void *)m_window; }
 
-  void show() {}
-  void hide() {}
+  void show() {
+    dispatch_async(dispatch_get_main_queue(),^{
+        ((void (*)(id, SEL, id))objc_msgSend)(m_controller, "showWindow:"_sel,m_window);
+    });  
+  }
+
+  void hide() {
+    dispatch_async(dispatch_get_main_queue(),^{
+        ((void (*)(id, SEL, id))objc_msgSend)(m_window, "orderOut:"_sel,m_window);
+    });  
+  }
   void terminate() {
     close();
     ((void (*)(id, SEL, id))objc_msgSend)("NSApp"_cls, "terminate:"_sel,
@@ -233,6 +222,7 @@ private:
   id m_window;
   id m_webview;
   id m_manager;
+  id m_controller;
 };
 
 using browser_engine = cocoa_wkwebview_engine;
