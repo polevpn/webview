@@ -473,7 +473,7 @@ public:
     g_signal_connect(manager, "script-message-received::external",
                      G_CALLBACK(+[](WebKitUserContentManager *,
                                     WebKitJavascriptResult *r, gpointer arg) {
-                       auto *w = static_cast<gtk_webkit_engine *>(arg);
+                       auto *w = static_cast<xxxxx *>(arg);
 #if WEBKIT_MAJOR_VERSION >= 2 && WEBKIT_MINOR_VERSION >= 22
                        JSCValue *value =
                            webkit_javascript_result_get_js_value(r);
@@ -488,12 +488,11 @@ public:
                        JSStringGetUTF8CString(js, s, n);
                        JSStringRelease(js);
 #endif
-                       w->on_message(s);
+                       w->on_mesxsage(s);
                        g_free(s);
                      }),
                      this);
-    webkit_user_content_manager_register_script_message_handler(manager,
-                                                                "external");
+    webkit_user_content_manager_register_script_message_handler(manager,"external");
     init("window.external={invoke:function(s){window.webkit.messageHandlers."
          "external.postMessage(s);}}");
 
@@ -639,9 +638,7 @@ public:
     class_addMethod(cls, "applicationShouldTerminateAfterLastWindowClosed:"_sel, (IMP)(+[](id, SEL, id) -> BOOL { return 0; }), "c@:@");
     class_addMethod(cls, "userContentController:didReceiveScriptMessage:"_sel,
                     (IMP)(+[](id self, SEL, id, id msg) {
-                      auto w =
-                          (cocoa_wkwebview_engine *)objc_getAssociatedObject(
-                              self, "webview");
+                      auto w =(cocoa_wkwebview_engine *)objc_getAssociatedObject(self, "webview");
                       assert(w);
                       w->on_message(((const char *(*)(id, SEL))objc_msgSend)(
                           ((id(*)(id, SEL))objc_msgSend)(msg, "body"_sel),
@@ -1313,6 +1310,7 @@ public:
 
 private:
   void on_message(const std::string msg) {
+
     auto seq = json_parse(msg, "id", 0);
     auto name = json_parse(msg, "method", 0);
     auto args = json_parse(msg, "params", 0);
