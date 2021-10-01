@@ -32,7 +32,9 @@ namespace webview {
 
 class cocoa_wkwebview_engine {
 public:
-  cocoa_wkwebview_engine(bool debug, void *window) {
+  cocoa_wkwebview_engine(bool hide,bool debug, void *window) {
+
+    m_hide = hide;
     // Application
     id app = ((id(*)(id, SEL))objc_msgSend)(CLASS("NSApplication"),METHOD("sharedApplication"));
     ((void (*)(id, SEL, long))objc_msgSend)(app, METHOD("setActivationPolicy:"), NSApplicationActivationPolicyRegular);
@@ -40,7 +42,12 @@ public:
     // Delegate
     Class cls = objc_allocateClassPair((Class)objc_getClass("NSResponder"), "NSWebviewResponder", 0);
     class_addProtocol(cls, objc_getProtocol("NSTouchBarProvider"));
-    class_addMethod(cls, METHOD("applicationShouldTerminateAfterLastWindowClosed:"), (IMP)(+[](id, SEL, id) -> BOOL { return 0; }), "c@:@");
+
+    if(m_hide) {
+      class_addMethod(cls, METHOD("applicationShouldTerminateAfterLastWindowClosed:"), (IMP)(+[](id, SEL, id) -> BOOL { return 0; }), "c@:@");
+    }else{
+      class_addMethod(cls, METHOD("applicationShouldTerminateAfterLastWindowClosed:"), (IMP)(+[](id, SEL, id) -> BOOL { return 1; }), "c@:@");
+    }
     class_addMethod(cls, METHOD("userContentController:didReceiveScriptMessage:"),
                     (IMP)(+[](id self, SEL, id, id msg) {
                       auto w = (cocoa_wkwebview_engine *)objc_getAssociatedObject(self, "webview");
@@ -183,6 +190,7 @@ public:
 private:
   virtual void on_message(const std::string msg) = 0;
   void close() { ((void (*)(id, SEL))objc_msgSend)(m_window, METHOD("close")); }
+  bool m_hide;
   id m_window;
   id m_webview;
   id m_manager;

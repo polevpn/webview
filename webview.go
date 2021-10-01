@@ -7,9 +7,8 @@ package webview
 #cgo darwin CXXFLAGS: -DWEBVIEW_COCOA -std=c++11
 #cgo darwin LDFLAGS: -framework WebKit
 
-#cgo windows CXXFLAGS: -std=c++11
-#cgo windows,amd64 LDFLAGS: -L./dll/x64 -lwebview -lWebView2Loader
-#cgo windows,386 LDFLAGS: -L./dll/x86 -lwebview -lWebView2Loader
+#cgo windows CXXFLAGS: -std=c++11 -I./libwebview2/build/native/include
+#cgo windows,amd64 LDFLAGS: -lole32 -lShlwapi -L./libwebview2/build/native/x64 -lWebView2Loader -mwindows
 
 #define WEBVIEW_HEADER
 #include "webview.h"
@@ -155,7 +154,7 @@ func boolToInt(b bool) C.int {
 
 // New calls NewWindow to create a new window and a new webview instance. If debug
 // is non-zero - developer tools will be enabled (if the platform supports them).
-func New(debug bool) WebView { return NewWindow(debug, nil) }
+func New(hide bool, debug bool) WebView { return NewWindow(hide, debug, nil) }
 
 // NewWindow creates a new webview instance. If debug is non-zero - developer
 // tools will be enabled (if the platform supports them). Window parameter can be
@@ -163,9 +162,9 @@ func New(debug bool) WebView { return NewWindow(debug, nil) }
 // embedded into the given parent window. Otherwise a new window is created.
 // Depending on the platform, a GtkWindow, NSWindow or HWND pointer can be passed
 // here.
-func NewWindow(debug bool, window unsafe.Pointer) WebView {
+func NewWindow(hide bool, debug bool, window unsafe.Pointer) WebView {
 	w := &webview{}
-	w.w = C.webview_create(boolToInt(debug), window)
+	w.w = C.webview_create(boolToInt(hide), boolToInt(debug), window)
 	return w
 }
 

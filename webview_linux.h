@@ -16,8 +16,9 @@ namespace webview {
 
 class gtk_webkit_engine {
 public:
-  gtk_webkit_engine(bool debug, void *window)
+  gtk_webkit_engine(bool hide,bool debug, void *window)
       : m_window(static_cast<GtkWidget *>(window)) {
+    m_hide = hide;
     gtk_init_check(0, NULL);
     m_window = static_cast<GtkWidget *>(window);
     if (m_window == nullptr) {
@@ -29,7 +30,9 @@ public:
                      }),
                      this);
 
-    g_signal_connect(G_OBJECT(m_window), "delete-event",  G_CALLBACK(gtk_webkit_engine::hideWindow), this);
+    if(m_hide){
+      g_signal_connect(G_OBJECT(m_window), "delete-event",  G_CALLBACK(gtk_webkit_engine::hideWindow), this);
+    }
 
     // Initialize webview widget
     m_webview = webkit_web_view_new();
@@ -160,6 +163,7 @@ private:
   virtual void on_message(const std::string msg) = 0;
   GtkWidget *m_window;
   GtkWidget *m_webview;
+  bool m_hide;
 };
 
 using browser_engine = gtk_webkit_engine;

@@ -12,21 +12,12 @@
 #include <codecvt>
 #include <stdlib.h>
 #include <windows.h>
-
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "Shlwapi.lib")
-
-// EdgeHTML headers and libs
-#include <objbase.h>
-#include <winrt/Windows.Foundation.Collections.h>
-#include <winrt/Windows.Foundation.h>
-#include <winrt/Windows.Web.UI.Interop.h>
-#pragma comment(lib, "windowsapp")
-
-// Edge/Chromium headers and libs
+#include <winuser.h>
+#include <string>
+#include <locale>
+#include <iostream>
 #include "webview2.h"
-#pragma comment(lib, "ole32.lib")
-#pragma comment(lib, "oleaut32.lib")
+
 
 namespace webview {
 
@@ -44,97 +35,20 @@ public:
 };
 
 //
-// EdgeHTML browser engine
-//
-using namespace winrt;
-using namespace Windows::Foundation;
-using namespace Windows::Web::UI;
-using namespace Windows::Web::UI::Interop;
-
-class edge_html : public browser {
-public:
-  bool embed(HWND wnd, bool debug, msg_cb_t cb) override {
-    init_apartment(winrt::apartment_type::single_threaded);
-    auto process = WebViewControlProcess();
-    auto op = process.CreateWebViewControlAsync(reinterpret_cast<int64_t>(wnd),
-                                                Rect());
-    if (op.Status() != AsyncStatus::Completed) {
-      handle h(CreateEvent(nullptr, false, false, nullptr));
-      op.Completed([h = h.get()](auto, auto) { SetEvent(h); });
-      HANDLE hs[] = {h.get()};
-      DWORD i;
-      CoWaitForMultipleHandles(COWAIT_DISPATCH_WINDOW_MESSAGES |
-                                   COWAIT_DISPATCH_CALLS |
-                                   COWAIT_INPUTAVAILABLE,
-                               INFINITE, 1, hs, &i);
-    }
-    m_webview = op.GetResults();
-    m_webview.Settings().IsScriptNotifyAllowed(true);
-    m_webview.IsVisible(true);
-    m_webview.ScriptNotify([=](auto const &sender, auto const &args) {
-      std::string s = winrt::to_string(args.Value());
-      cb(s.c_str());
-    });
-    m_webview.NavigationStarting([=](auto const &sender, auto const &args) {
-      m_webview.AddInitializeScript(winrt::to_hstring(init_js));
-    });
-    init("window.external.invoke = s => window.external.notify(s)");
-    return true;
-  }
-
-  void navigate(const std::string url) override {
-    std::string html = html_from_uri(url);
-    if (html != "") {
-      m_webview.NavigateToString(winrt::to_hstring(html));
-    } else {
-      Uri uri(winrt::to_hstring(url));
-      m_webview.Navigate(uri);
-    }
-  }
-
-  void init(const std::string js) override {
-    init_js = init_js + "(function(){" + js + "})();";
-  }
-
-  void eval(const std::string js) override {
-    m_webview.InvokeScriptAsync(
-        L"eval", single_threaded_vector<hstring>({winrt::to_hstring(js)}));
-  }
-
-  void resize(HWND wnd) override {
-    if (m_webview == nullptr) {
-      return;
-    }
-    RECT r;
-    GetClientRect(wnd, &r);
-    Rect bounds(r.left, r.top, r.right - r.left, r.bottom - r.top);
-    m_webview.Bounds(bounds);
-  }
-
-private:
-  WebViewControl m_webview = nullptr;
-  std::string init_js = "";
-};
-
-//
 // Edge/Chromium browser engine
 //
 class edge_chromium : public browser {
 public:
   bool embed(HWND wnd, bool debug, msg_cb_t cb) override {
-    CoInitializeEx(nullptr, 0);
+    CoInitialize(0);
     std::atomic_flag flag = ATOMIC_FLAG_INIT;
     flag.test_and_set();
-
     char currentExePath[MAX_PATH];
     GetModuleFileNameA(NULL, currentExePath, MAX_PATH);
     char *currentExeName = PathFindFileNameA(currentExePath);
-
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> wideCharConverter;
-    std::wstring userDataFolder =
-        wideCharConverter.from_bytes(std::getenv("APPDATA"));
+    std::wstring userDataFolder = wideCharConverter.from_bytes(std::getenv("APPDATA"));
     std::wstring currentExeNameW = wideCharConverter.from_bytes(currentExeName);
-
     HRESULT res = CreateCoreWebView2EnvironmentWithOptions(
         nullptr, (userDataFolder + L"/" + currentExeNameW).c_str(), nullptr,
         new webview2_com_handler(wnd, cb,
@@ -144,6 +58,7 @@ public:
                                    m_webview->AddRef();
                                    flag.clear();
                                  }));
+
     if (res != S_OK) {
       CoUninitialize();
       return false;
@@ -200,8 +115,7 @@ private:
         public ICoreWebView2CreateCoreWebView2ControllerCompletedHandler,
         public ICoreWebView2WebMessageReceivedEventHandler,
         public ICoreWebView2PermissionRequestedEventHandler {
-    using webview2_com_handler_cb_t =
-        std::function<void(ICoreWebView2Controller *)>;
+    using webview2_com_handler_cb_t = std::function<void(ICoreWebView2Controller *)>;
 
   public:
     webview2_com_handler(HWND hwnd, msg_cb_t msgCb,
@@ -212,13 +126,18 @@ private:
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, LPVOID *ppv) {
       return S_OK;
     }
-    HRESULT STDMETHODCALLTYPE Invoke(HRESULT res,
-                                     ICoreWebView2Environment *env) {
+    HRESULT STDMETHODCALLTYPE Invoke(HRESULT res, ICoreWebView2Environment *env) {
+      if(res != 0x0){
+        return res;
+      }
       env->CreateCoreWebView2Controller(m_window, this);
       return S_OK;
     }
-    HRESULT STDMETHODCALLTYPE Invoke(HRESULT res,
-                                     ICoreWebView2Controller *controller) {
+    HRESULT STDMETHODCALLTYPE Invoke(HRESULT res,ICoreWebView2Controller *controller) {
+
+      if(res != 0x0){
+        return res;
+      }
       controller->AddRef();
 
       ICoreWebView2 *webview;
@@ -230,8 +149,7 @@ private:
       m_cb(controller);
       return S_OK;
     }
-    HRESULT STDMETHODCALLTYPE Invoke(
-        ICoreWebView2 *sender, ICoreWebView2WebMessageReceivedEventArgs *args) {
+    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2 *sender, ICoreWebView2WebMessageReceivedEventArgs *args) {
       LPWSTR message;
       args->TryGetWebMessageAsString(&message);
 
@@ -242,9 +160,7 @@ private:
       CoTaskMemFree(message);
       return S_OK;
     }
-    HRESULT STDMETHODCALLTYPE
-    Invoke(ICoreWebView2 *sender,
-           ICoreWebView2PermissionRequestedEventArgs *args) {
+    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2 *sender,ICoreWebView2PermissionRequestedEventArgs *args) {
       COREWEBVIEW2_PERMISSION_KIND kind;
       args->get_PermissionKind(&kind);
       if (kind == COREWEBVIEW2_PERMISSION_KIND_CLIPBOARD_READ) {
@@ -262,13 +178,13 @@ private:
 
 class win32_edge_engine {
 public:
-  win32_edge_engine(bool debug, void *window) {
+  win32_edge_engine(bool hide,bool debug, void *window) {
+    m_hide = hide;
     if (window == nullptr) {
       HINSTANCE hInstance = GetModuleHandle(nullptr);
       HICON icon = (HICON)LoadImage(
           hInstance, IDI_APPLICATION, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
           GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
-
       WNDCLASSEX wc;
       ZeroMemory(&wc, sizeof(WNDCLASSEX));
       wc.cbSize = sizeof(WNDCLASSEX);
@@ -284,7 +200,11 @@ public:
               w->m_browser->resize(hwnd);
               break;
             case WM_CLOSE:
-              DestroyWindow(hwnd);
+              if(w->m_hide){
+                ShowWindow(w->m_window, SW_HIDE);
+              }else{
+                DestroyWindow(hwnd);
+              }
               break;
             case WM_DESTROY:
               w->terminate();
@@ -316,19 +236,13 @@ public:
       m_window = *(static_cast<HWND *>(window));
     }
 
-    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+    //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
     ShowWindow(m_window, SW_SHOW);
     UpdateWindow(m_window);
     SetFocus(m_window);
 
-    auto cb =
-        std::bind(&win32_edge_engine::on_message, this, std::placeholders::_1);
-
-    if (!m_browser->embed(m_window, debug, cb)) {
-      m_browser = std::make_unique<webview::edge_html>();
-      m_browser->embed(m_window, debug, cb);
-    }
-
+    auto cb = std::bind(&win32_edge_engine::on_message, this, std::placeholders::_1);
+    m_browser->embed(m_window, debug, cb);
     m_browser->resize(m_window);
   }
 
@@ -336,6 +250,7 @@ public:
     MSG msg;
     BOOL res;
     while ((res = GetMessage(&msg, nullptr, 0, 0)) != -1) {
+      
       if (msg.hwnd) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
@@ -351,8 +266,12 @@ public:
     }
   }
   void *window() { return (void *)m_window; }
-  void hide() {}
-  void show() {}
+  void hide() {
+    ShowWindow(m_window, SW_HIDE);
+  }
+  void show() {
+    ShowWindow(m_window, SW_SHOW);
+  }
   void terminate() { PostQuitMessage(0); }
   void dispatch(dispatch_fn_t f) {
     PostThreadMessage(m_main_thread, WM_APP, 0, (LPARAM) new dispatch_fn_t(f));
@@ -396,13 +315,12 @@ public:
 
 private:
   virtual void on_message(const std::string msg) = 0;
-
+  bool m_hide;
   HWND m_window;
   POINT m_minsz = POINT{0, 0};
   POINT m_maxsz = POINT{0, 0};
   DWORD m_main_thread = GetCurrentThreadId();
-  std::unique_ptr<webview::browser> m_browser =
-      std::make_unique<webview::edge_chromium>();
+  std::unique_ptr<webview::browser> m_browser = std::unique_ptr<webview::edge_chromium>(new webview::edge_chromium());
 };
 
 using browser_engine = win32_edge_engine;
