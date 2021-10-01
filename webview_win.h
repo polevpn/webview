@@ -8,10 +8,12 @@
 //
 
 #define WIN32_LEAN_AND_MEAN
+//#define WINVER  0x0605
 #include <Shlwapi.h>
 #include <codecvt>
 #include <stdlib.h>
 #include <windows.h>
+#include <wrl.h>
 #include <winuser.h>
 #include <string>
 #include <locale>
@@ -40,6 +42,7 @@ public:
 class edge_chromium : public browser {
 public:
   bool embed(HWND wnd, bool debug, msg_cb_t cb) override {
+    m_debug = debug;
     CoInitialize(0);
     std::atomic_flag flag = ATOMIC_FLAG_INIT;
     flag.test_and_set();
@@ -68,6 +71,11 @@ public:
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
+
+    ICoreWebView2Settings* Settings;
+    m_webview->get_Settings(&Settings);
+    Settings->put_AreDevToolsEnabled(m_debug);
+
     init("window.external={invoke:s=>window.chrome.webview.postMessage(s)}");
     return true;
   }
@@ -106,7 +114,7 @@ private:
     MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, ws, n);
     return ws;
   }
-
+  bool m_debug;
   ICoreWebView2 *m_webview = nullptr;
   ICoreWebView2Controller *m_controller = nullptr;
 
@@ -182,9 +190,7 @@ public:
     m_hide = hide;
     if (window == nullptr) {
       HINSTANCE hInstance = GetModuleHandle(nullptr);
-      HICON icon = (HICON)LoadImage(
-          hInstance, IDI_APPLICATION, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON),
-          GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+      HICON icon = (HICON)LoadImage(hInstance, IDI_APPLICATION, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
       WNDCLASSEX wc;
       ZeroMemory(&wc, sizeof(WNDCLASSEX));
       wc.cbSize = sizeof(WNDCLASSEX);
@@ -192,6 +198,7 @@ public:
       wc.lpszClassName = "webview";
       wc.hIcon = icon;
       wc.hIconSm = icon;
+      wc.hbrBackground = CreateSolidBrush(RGB(255,255,255));
       wc.lpfnWndProc =
           (WNDPROC)(+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> int {
             auto w = (win32_edge_engine *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
@@ -229,14 +236,14 @@ public:
           });
       RegisterClassEx(&wc);
       m_window = CreateWindow("webview", "", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
-                              CW_USEDEFAULT, 640, 480, nullptr, nullptr,
+                              CW_USEDEFAULT, 100, 100, nullptr, nullptr,
                               GetModuleHandle(nullptr), nullptr);
       SetWindowLongPtr(m_window, GWLP_USERDATA, (LONG_PTR)this);
     } else {
       m_window = *(static_cast<HWND *>(window));
     }
 
-    //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+    //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
     ShowWindow(m_window, SW_SHOW);
     UpdateWindow(m_window);
     SetFocus(m_window);
