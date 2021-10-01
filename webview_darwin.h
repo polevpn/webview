@@ -44,9 +44,9 @@ public:
     class_addProtocol(cls, objc_getProtocol("NSTouchBarProvider"));
 
     if(m_hide) {
-      class_addMethod(cls, METHOD("applicationShouldTerminateAfterLastWindowClosed:"), (IMP)(+[](id, SEL, id) -> BOOL { return 0; }), "c@:@");
+      class_addMethod(cls, METHOD("applicationShouldTerminateAfterLastWindowClosed:"), (IMP)(+[](id, SEL, id) -> BOOL { return NO; }), "c@:@");
     }else{
-      class_addMethod(cls, METHOD("applicationShouldTerminateAfterLastWindowClosed:"), (IMP)(+[](id, SEL, id) -> BOOL { return 1; }), "c@:@");
+      class_addMethod(cls, METHOD("applicationShouldTerminateAfterLastWindowClosed:"), (IMP)(+[](id, SEL, id) -> BOOL { return YES; }), "c@:@");
     }
     class_addMethod(cls, METHOD("userContentController:didReceiveScriptMessage:"),
                     (IMP)(+[](id self, SEL, id, id msg) {
