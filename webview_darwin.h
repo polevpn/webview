@@ -19,8 +19,6 @@
 #define NSWindowStyleMaskTitled 1
 #define NSWindowStyleMaskClosable 2
 
-#define NSApplicationActivationPolicyRegular 0
-
 #define WKUserScriptInjectionTimeAtDocumentStart 0
 
 namespace webview {
@@ -37,7 +35,7 @@ public:
     m_hide = hide;
     // Application
     id app = ((id(*)(id, SEL))objc_msgSend)(CLASS("NSApplication"),METHOD("sharedApplication"));
-    ((void (*)(id, SEL, long))objc_msgSend)(app, METHOD("setActivationPolicy:"), NSApplicationActivationPolicyRegular);
+    ((void (*)(id, SEL, long))objc_msgSend)(app, METHOD("setActivationPolicy:"), YES);
 
     // Delegate
     Class cls = objc_allocateClassPair((Class)objc_getClass("NSResponder"), "NSWebviewResponder", 0);
@@ -120,9 +118,9 @@ public:
 
   void show() {
     dispatch_async(dispatch_get_main_queue(),^{
-        id app = ((id(*)(id, SEL))objc_msgSend)(CLASS("NSApplication"),METHOD("sharedApplication"));
-        ((void (*)(id, SEL, BOOL))objc_msgSend)(app, METHOD("activateIgnoringOtherApps:"), 1);
         ((void (*)(id, SEL, id))objc_msgSend)(m_controller, METHOD("showWindow:"),m_window);
+        id app = ((id(*)(id, SEL))objc_msgSend)(CLASS("NSApplication"),METHOD("sharedApplication"));
+        ((void (*)(id, SEL, BOOL))objc_msgSend)(app, METHOD("activateIgnoringOtherApps:"), YES);
     });  
   }
 
