@@ -118,9 +118,11 @@ public:
 
   void show() {
     dispatch_async(dispatch_get_main_queue(),^{
-        ((void (*)(id, SEL, id))objc_msgSend)(m_controller, METHOD("showWindow:"),m_window);
+
         id app = ((id(*)(id, SEL))objc_msgSend)(CLASS("NSApplication"),METHOD("sharedApplication"));
         ((void (*)(id, SEL, BOOL))objc_msgSend)(app, METHOD("activateIgnoringOtherApps:"), YES);
+        ((void (*)(id, SEL, id))objc_msgSend)(m_controller, METHOD("showWindow:"),m_window);
+        ((void (*)(id, SEL, id))objc_msgSend)(m_window, METHOD("makeKeyAndOrderFront:"),nullptr);
     });  
   }
 
