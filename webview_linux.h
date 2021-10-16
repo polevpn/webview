@@ -16,14 +16,12 @@ namespace webview {
 
 class gtk_webkit_engine {
 public:
-  gtk_webkit_engine(bool hide,bool debug, void *window)
+  gtk_webkit_engine(int width,int height,bool hide,bool debug)
       : m_window(static_cast<GtkWidget *>(window)) {
     m_hide = hide;
     gtk_init_check(0, NULL);
-    m_window = static_cast<GtkWidget *>(window);
-    if (m_window == nullptr) {
-      m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-    }
+    m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    gtk_window_resize(GTK_WINDOW(m_window), width, height);
     g_signal_connect(G_OBJECT(m_window), "destroy",
                      G_CALLBACK(+[](GtkWidget *, gpointer arg) {
                        static_cast<gtk_webkit_engine *>(arg)->terminate();

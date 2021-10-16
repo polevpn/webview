@@ -41,7 +41,7 @@ typedef void *webview_t;
 // is embedded into the given parent window. Otherwise a new window is created.
 // Depending on the platform, a GtkWindow, NSWindow or HWND pointer can be
 // passed here.
-WEBVIEW_API webview_t webview_create(int hide,int debug, void *window);
+WEBVIEW_API webview_t webview_create(int width,int height,int hide,int debug);
 
 // Destroys a webview and closes the native window.
 WEBVIEW_API void webview_destroy(webview_t w);
@@ -450,8 +450,8 @@ namespace webview {
 
 class webview : public browser_engine {
 public:
-  webview(bool hide = false,bool debug = false, void *wnd = nullptr)
-      : browser_engine(hide,debug, wnd) {}
+  webview(int width,int height,bool hide = false,bool debug = false)
+      : browser_engine(width,height,hide,debug) {}
 
   void navigate(const std::string url) {
     if (url == "") {
@@ -533,8 +533,8 @@ private:
 };
 } // namespace webview
 
-WEBVIEW_API webview_t webview_create(int hide,int debug, void *wnd) {
-  return new webview::webview(hide,debug, wnd);
+WEBVIEW_API webview_t webview_create(int width,int height,int hide,int debug) {
+  return new webview::webview(width,height,hide,debug);
 }
 
 WEBVIEW_API void webview_destroy(webview_t w) {

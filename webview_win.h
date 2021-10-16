@@ -186,63 +186,69 @@ private:
 
 class win32_edge_engine {
 public:
-  win32_edge_engine(bool hide,bool debug, void *window) {
+  win32_edge_engine(int width,int height,bool hide,bool debug) {
     m_hide = hide;
-    if (window == nullptr) {
-      HINSTANCE hInstance = GetModuleHandle(nullptr);
-      HICON icon = (HICON)LoadImage(hInstance, IDI_APPLICATION, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
-      WNDCLASSEX wc;
-      ZeroMemory(&wc, sizeof(WNDCLASSEX));
-      wc.cbSize = sizeof(WNDCLASSEX);
-      wc.hInstance = hInstance;
-      wc.lpszClassName = "webview";
-      wc.hIcon = icon;
-      wc.hIconSm = icon;
-      wc.hbrBackground = CreateSolidBrush(RGB(255,255,255));
-      wc.lpfnWndProc =
-          (WNDPROC)(+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> int {
-            auto w = (win32_edge_engine *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
-            switch (msg) {
-            case WM_SIZE:
-              w->m_browser->resize(hwnd);
-              break;
-            case WM_CLOSE:
-              if(w->m_hide){
-                ShowWindow(w->m_window, SW_HIDE);
-              }else{
-                DestroyWindow(hwnd);
-              }
-              break;
-            case WM_DESTROY:
-              w->terminate();
-              break;
-            case WM_GETMINMAXINFO: {
-              auto lpmmi = (LPMINMAXINFO)lp;
-              if (w == nullptr) {
-                return 0;
-              }
-              if (w->m_maxsz.x > 0 && w->m_maxsz.y > 0) {
-                lpmmi->ptMaxSize = w->m_maxsz;
-                lpmmi->ptMaxTrackSize = w->m_maxsz;
-              }
-              if (w->m_minsz.x > 0 && w->m_minsz.y > 0) {
-                lpmmi->ptMinTrackSize = w->m_minsz;
-              }
-            } break;
-            default:
-              return DefWindowProc(hwnd, msg, wp, lp);
+    HINSTANCE hInstance = GetModuleHandle(nullptr);
+    HICON icon = (HICON)LoadImage(hInstance, IDI_APPLICATION, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+    WNDCLASSEX wc;
+    ZeroMemory(&wc, sizeof(WNDCLASSEX));
+    wc.cbSize = sizeof(WNDCLASSEX);
+    wc.hInstance = hInstance;
+    wc.lpszClassName = "webview";
+    wc.hIcon = icon;
+    wc.hIconSm = icon;
+    wc.hbrBackground = CreateSolidBrush(RGB(255,255,255));
+    wc.lpfnWndProc =
+        (WNDPROC)(+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> int {
+          auto w = (win32_edge_engine *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+          switch (msg) {
+          case WM_SIZE:
+            w->m_browser->resize(hwnd);
+            break;
+          case WM_CLOSE:
+            if(w->m_hide){
+              ShowWindow(w->m_window, SW_HIDE);
+            }else{
+              DestroyWindow(hwnd);
             }
-            return 0;
-          });
-      RegisterClassEx(&wc);
-      m_window = CreateWindow("webview", "", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
-                              CW_USEDEFAULT, 100, 100, nullptr, nullptr,
-                              GetModuleHandle(nullptr), nullptr);
-      SetWindowLongPtr(m_window, GWLP_USERDATA, (LONG_PTR)this);
-    } else {
-      m_window = *(static_cast<HWND *>(window));
-    }
+            break;
+          case WM_DESTROY:
+            w->terminate();
+            break;
+          case WM_GETMINMAXINFO: {
+            auto lpmmi = (LPMINMAXINFO)lp;
+            if (w == nullptr) {
+              return 0;
+            }
+            if (w->m_maxsz.x > 0 && w->m_maxsz.y > 0) {
+              lpmmi->ptMaxSize = w->m_maxsz;
+              lpmmi->ptMaxTrackSize = w->m_maxsz;
+            }
+            if (w->m_minsz.x > 0 && w->m_minsz.y > 0) {
+              lpmmi->ptMinTrackSize = w->m_minsz;
+            }
+          } break;
+          default:
+            return DefWindowProc(hwnd, msg, wp, lp);
+          }
+          return 0;
+        });
+    RegisterClassEx(&wc);
+    m_window = CreateWindow("webview", "", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
+                            CW_USEDEFAULT, width, height, nullptr, nullptr,
+                            GetModuleHandle(nullptr), nullptr);
+    SetWindowLongPtr(m_window, GWLP_USERDATA, (LONG_PTR)this);
 
+    int scrWidth  = GetSystemMetrics(SM_CXSCREEN);
+    int scrHeight = GetSystemMetrics(SM_CYSCREEN);
+    RECT rect;
+    rect.right =  width;// 设置窗口宽高
+    rect.bottom = height;
+    rect.left = (scrWidth - rect.right) / 2;
+    rect.top = (scrHeight - rect.bottom) / 2;
+
+    AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, 0);
+    MoveWindow(m_window,rect.left, rect.top, rect.right, rect.bottom,  1);// 居中
     //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
     ShowWindow(m_window, SW_SHOW);
     UpdateWindow(m_window);
@@ -304,14 +310,17 @@ public:
       m_minsz.x = width;
       m_minsz.y = height;
     } else {
-      RECT r;
-      r.left = r.top = 0;
-      r.right = width;
-      r.bottom = height;
-      AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
-      SetWindowPos(
-          m_window, NULL, r.left, r.top, r.right - r.left, r.bottom - r.top,
-          SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE | SWP_FRAMECHANGED);
+
+      int scrWidth  = GetSystemMetrics(SM_CXSCREEN);
+      int scrHeight = GetSystemMetrics(SM_CYSCREEN);
+      RECT rect;
+      rect.right =  width;// 设置窗口宽高
+      rect.bottom = height;
+      rect.left = (scrWidth - rect.right) / 2;
+      rect.top = (scrHeight - rect.bottom) / 2;
+
+      AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, 0);
+      MoveWindow(m_window,rect.left, rect.top, rect.right, rect.bottom,  1);// 居中
       m_browser->resize(m_window);
     }
   }

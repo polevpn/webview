@@ -30,7 +30,7 @@ namespace webview {
 
 class cocoa_wkwebview_engine {
 public:
-  cocoa_wkwebview_engine(bool hide,bool debug, void *window) {
+  cocoa_wkwebview_engine(int width,int height,bool hide,bool debug) {
 
     m_hide = hide;
     // Application
@@ -59,17 +59,11 @@ public:
     auto delegate = ((id(*)(id, SEL))objc_msgSend)((id)cls, METHOD("new"));
     objc_setAssociatedObject(delegate, "webview", (id)this,OBJC_ASSOCIATION_ASSIGN);
     ((void (*)(id, SEL, id))objc_msgSend)(app, METHOD("setDelegate:"),delegate);
-    // Main window
-    if (window == nullptr) {
-      m_window = ((id(*)(id, SEL))objc_msgSend)(CLASS("NSWindow"), METHOD("alloc"));
-      m_window =  ((id(*)(id, SEL, CGRect, int, unsigned long, int))objc_msgSend)(
-              m_window, METHOD("initWithContentRect:styleMask:backing:defer:"),
-              CGRectMake(0, 0, 0, 0), 0, NSBackingStoreBuffered, 0);
 
-      
-    } else {
-      m_window = (id)window;
-    }
+    m_window = ((id(*)(id, SEL))objc_msgSend)(CLASS("NSWindow"), METHOD("alloc"));
+    m_window =  ((id(*)(id, SEL, CGRect, int, unsigned long, int))objc_msgSend)(
+            m_window, METHOD("initWithContentRect:styleMask:backing:defer:"),
+            CGRectMake(0, 0, width, height), 0, NSBackingStoreBuffered, 0);
 
     m_controller = ((id(*)(id, SEL))objc_msgSend)(CLASS("NSWindowController"), METHOD("alloc"));
     m_controller =  ((id(*)(id, SEL,id))objc_msgSend)(m_controller, METHOD("initWithWindow:"),m_window);

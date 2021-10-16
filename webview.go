@@ -154,17 +154,10 @@ func boolToInt(b bool) C.int {
 
 // New calls NewWindow to create a new window and a new webview instance. If debug
 // is non-zero - developer tools will be enabled (if the platform supports them).
-func New(hide bool, debug bool) WebView { return NewWindow(hide, debug, nil) }
+func New(width int, height int, hide bool, debug bool) WebView {
 
-// NewWindow creates a new webview instance. If debug is non-zero - developer
-// tools will be enabled (if the platform supports them). Window parameter can be
-// a pointer to the native window handle. If it's non-null - then child WebView is
-// embedded into the given parent window. Otherwise a new window is created.
-// Depending on the platform, a GtkWindow, NSWindow or HWND pointer can be passed
-// here.
-func NewWindow(hide bool, debug bool, window unsafe.Pointer) WebView {
 	w := &webview{}
-	w.w = C.webview_create(boolToInt(hide), boolToInt(debug), window)
+	w.w = C.webview_create(C.int(width), C.int(height), boolToInt(hide), boolToInt(debug))
 	return w
 }
 
