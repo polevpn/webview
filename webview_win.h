@@ -189,7 +189,7 @@ public:
   win32_edge_engine(int width,int height,bool hide,bool debug) {
     m_hide = hide;
     HINSTANCE hInstance = GetModuleHandle(nullptr);
-    HICON icon = (HICON)LoadImage(hInstance, IDI_APPLICATION, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+    HICON icon = (HICON)LoadImage(hInstance, IDI_WINLOGO, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
     WNDCLASSEX wc;
     ZeroMemory(&wc, sizeof(WNDCLASSEX));
     wc.cbSize = sizeof(WNDCLASSEX);
