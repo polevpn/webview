@@ -144,6 +144,10 @@ public:
                        delete f;
                      }));
   }
+
+  void set_icon(const std::string icon) {
+  }
+
   void set_title(const std::string title) {
     ((void (*)(id, SEL, id))objc_msgSend)(m_window, METHOD("setTitle:"),NSTR(title.c_str()));
   }

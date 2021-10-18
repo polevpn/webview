@@ -108,6 +108,9 @@ type WebView interface {
 	// SetSize updates native window size. See Hint constants.
 	SetSize(w int, h int, hint Hint)
 
+	// SetIcon.
+	SetIcon(iconBytes []byte)
+
 	// Navigate navigates webview to the given URL. URL may be a data URI, i.e.
 	// "data:text/text,<html>...</html>". It is often ok not to url-encode it
 	// properly, webview will re-encode it for you.
@@ -199,6 +202,10 @@ func (w *webview) SetTitle(title string) {
 
 func (w *webview) SetSize(width int, height int, hint Hint) {
 	C.webview_set_size(w.w, C.int(width), C.int(height), C.int(hint))
+}
+
+func (w *webview) SetIcon(iconBytes []byte) {
+	C.webview_set_icon(w.w, unsafe.Pointer(&iconBytes[0]), C.int(len(iconBytes)))
 }
 
 func (w *webview) Init(js string) {

@@ -290,6 +290,9 @@ public:
     PostThreadMessage(m_main_thread, WM_APP, 0, (LPARAM) new dispatch_fn_t(f));
   }
 
+  void set_icon(const std::string icon) {
+  }
+
   void set_title(const std::string title) {
     SetWindowText(m_window, title.c_str());
   }

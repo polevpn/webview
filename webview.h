@@ -82,6 +82,9 @@ WEBVIEW_API void webview_set_title(webview_t w, const char *title);
 WEBVIEW_API void webview_set_size(webview_t w, int width, int height,
                                   int hints);
 
+//set window icon
+WEBVIEW_API void webview_set_icon(webview_t w, const void *icon,int size);                                  
+
 // Navigates webview to the given URL. URL may be a data URI, i.e.
 // "data:text/text,<html>...</html>". It is often ok not to url-encode it
 // properly, webview will re-encode it for you.
@@ -568,6 +571,10 @@ WEBVIEW_API void *webview_get_window(webview_t w) {
 
 WEBVIEW_API void webview_set_title(webview_t w, const char *title) {
   static_cast<webview::webview *>(w)->set_title(title);
+}
+
+WEBVIEW_API void webview_set_icon(webview_t w, const void *icon,int size) {
+  static_cast<webview::webview *>(w)->set_icon(std::string((char*)icon,size));
 }
 
 WEBVIEW_API void webview_set_size(webview_t w, int width, int height,

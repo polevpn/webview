@@ -16,8 +16,7 @@ namespace webview {
 
 class gtk_webkit_engine {
 public:
-  gtk_webkit_engine(int width,int height,bool hide,bool debug)
-      : m_window(static_cast<GtkWidget *>(window)) {
+  gtk_webkit_engine(int width,int height,bool hide,bool debug) {
     m_hide = hide;
     gtk_init_check(0, NULL);
     m_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -77,6 +76,38 @@ public:
     gtk_window_set_position( GTK_WINDOW(m_window), GTK_WIN_POS_CENTER_ALWAYS );
     gtk_widget_show_all(m_window);
   }
+
+  GdkPixbuf * create_pixbuf(const gchar *filename)
+  {
+      GdkPixbuf *pixbuf;
+      GError *error = NULL;
+      pixbuf = gdk_pixbuf_new_from_file(filename, &error);
+      if(!pixbuf)
+      {
+          fprintf(stderr,"%s\n",error->message);
+          g_error_free(error);
+      }
+      return pixbuf;
+  }
+
+
+  void set_icon(const std::string icon) {
+
+    std::string temp_file_name ="/tmp/icon_xxxxxxxxxx";;
+    FILE *fd = fopen((char*)temp_file_name.c_str(),"w+");
+
+    if (fd == NULL) {
+		  printf("failed to create icon file %s: %s\n", temp_file_name.c_str(), strerror(errno));
+      return;
+    }
+    printf("size=%d\n",(int)icon.size());
+    ssize_t written = fwrite(icon.data(), icon.size(),icon.size(),fd);
+    fclose(fd);
+    gtk_window_set_icon(GTK_WINDOW(m_window),create_pixbuf(temp_file_name.c_str()));
+
+  }
+
+
   void *window() { return (void *)m_window; }
   void run() { gtk_main(); }
   void terminate() { gtk_main_quit(); }
