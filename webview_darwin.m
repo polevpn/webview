@@ -72,7 +72,7 @@
 -(id) initApp:(NSInteger)width height:(NSInteger)height hide:(BOOL)hide debug:(BOOL)debug {
    
     id app =  [NSApplication sharedApplication];
-    [app setActivationPolicy:NO];
+    [app setActivationPolicy:YES];
     
     _hide = hide;
     
