@@ -5,7 +5,7 @@ package webview
 #cgo linux openbsd freebsd pkg-config: gtk+-3.0 webkit2gtk-4.0
 
 #cgo darwin CXXFLAGS: -DWEBVIEW_COCOA -std=c++11
-#cgo darwin LDFLAGS: -framework WebKit
+#cgo darwin LDFLAGS: -framework AppKit -framework WebKit
 
 #cgo windows CXXFLAGS: -std=c++11 -I./libwebview2/build/native/include
 #cgo windows,amd64 LDFLAGS: -lole32 -lShlwapi -L./libwebview2/build/native/x64 -lWebView2Loader -mwindows
