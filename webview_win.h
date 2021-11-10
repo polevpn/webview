@@ -255,7 +255,11 @@ public:
     SetFocus(m_window);
 
     auto cb = std::bind(&win32_edge_engine::on_message, this, std::placeholders::_1);
-    m_browser->embed(m_window, debug, cb);
+    bool flag = m_browser->embed(m_window, debug, cb);
+    if(!flag){
+      MessageBox(NULL,TEXT("can't load webview2,please install webveiw2 runtime"),TEXT("Alert"),MB_OK);
+      exit(0);
+    }
     m_browser->resize(m_window);
   }
 
