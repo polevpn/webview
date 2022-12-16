@@ -50,8 +50,8 @@ $ go build -o example.app/Contents/MacOS/example
 $ open example.app # Or click on the app in Finder
 
 # Windows requires special linker flags for GUI apps.
-# It's also recommended to use TDM-GCC-64 compiler for CGo
-# http://tdm-gcc.tdragon.net/download
+# It's also recommended to use (mingw) compiler for CGo
+# https://github.com/niXman/mingw-builds-binaries/releases use win32-seh-msvcrt-rt_v10 version
 $ go build -ldflags="-H windowsgui" -o webview-example.exe
 ```
 
@@ -103,7 +103,7 @@ $ g++ main.cc `pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.0` -o webview-ex
 # MacOS
 $ g++ main.cc -std=c++11 -framework WebKit -o webview-example
 # Windows (x64)
-$ g++ main.cc -mwindows -o webview-example.exe -I./libwebview2/build/native/include -lole32 -lShlwapi -L./libwebview2/build/native/x64 -lWebView2Loader
+$ g++ main.cc -std=c++11 -mwindows -o webview-example.exe -I./libwebview2/build/native/include -Wl,-Bstatic -lstdc++ -lgcc_eh -lpthread -Wl,-Bdynamic -lole32 -lShlwapi -L./libwebview2/build/native/x64 -lWebView2Loader
 ```
 
 ### C:
