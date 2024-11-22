@@ -10,6 +10,7 @@
 #define WIN32_LEAN_AND_MEAN
 //#define WINVER  0x0605
 #include <Shlwapi.h>
+#include <ShlObj.h>
 #include <codecvt>
 #include <stdlib.h>
 #include <windows.h>
@@ -50,7 +51,17 @@ public:
     GetModuleFileNameW(nullptr, currentExePath, MAX_PATH);
     wchar_t *currentExeName = PathFindFileNameW(currentExePath);
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> wideCharConverter;
-    std::wstring userDataFolder = wideCharConverter.from_bytes(std::getenv("APPDATA"));
+
+    wchar_t dataPath[MAX_PATH];
+
+    HRESULT ret = SHGetFolderPathW(nullptr,CSIDL_APPDATA,nullptr,0,dataPath);
+
+    if (ret != S_OK){
+        CoUninitialize();
+        return false;
+    }
+
+    std::wstring userDataFolder = dataPath;
     std::wstring currentExeNameW = currentExeName;
     HRESULT res = CreateCoreWebView2EnvironmentWithOptions(
         nullptr, (userDataFolder + L"/" + currentExeNameW).c_str(), nullptr,
