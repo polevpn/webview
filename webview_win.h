@@ -43,15 +43,15 @@ class edge_chromium : public browser {
 public:
   bool embed(HWND wnd, bool debug, msg_cb_t cb) override {
     m_debug = debug;
-    CoInitialize(0);
+    CoInitializeEx(0,COINIT_APARTMENTTHREADED);
     std::atomic_flag flag = ATOMIC_FLAG_INIT;
     flag.test_and_set();
-    char currentExePath[MAX_PATH];
-    GetModuleFileNameA(NULL, currentExePath, MAX_PATH);
-    char *currentExeName = PathFindFileNameA(currentExePath);
+    wchar_t currentExePath[MAX_PATH];
+    GetModuleFileNameW(nullptr, currentExePath, MAX_PATH);
+    wchar_t *currentExeName = PathFindFileNameW(currentExePath);
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> wideCharConverter;
     std::wstring userDataFolder = wideCharConverter.from_bytes(std::getenv("APPDATA"));
-    std::wstring currentExeNameW = wideCharConverter.from_bytes(currentExeName);
+    std::wstring currentExeNameW = currentExeName;
     HRESULT res = CreateCoreWebView2EnvironmentWithOptions(
         nullptr, (userDataFolder + L"/" + currentExeNameW).c_str(), nullptr,
         new webview2_com_handler(wnd, cb,
@@ -189,7 +189,7 @@ public:
   win32_edge_engine(int width,int height,bool hide,bool debug) {
     m_hide = hide;
     HINSTANCE hInstance = GetModuleHandle(nullptr);
-    HICON icon = (HICON)LoadImage(hInstance, IDI_WINLOGO, IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), LR_DEFAULTCOLOR);
+    HICON icon = (HICON)LoadImage(hInstance, IDI_APPLICATION, IMAGE_ICON, GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CXICON), LR_DEFAULTCOLOR);
     WNDCLASSEX wc;
     ZeroMemory(&wc, sizeof(WNDCLASSEX));
     wc.cbSize = sizeof(WNDCLASSEX);
@@ -199,8 +199,8 @@ public:
     wc.hIconSm = icon;
     wc.hbrBackground = CreateSolidBrush(RGB(255,255,255));
     wc.lpfnWndProc =
-        (WNDPROC)(+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> int {
-          auto w = (win32_edge_engine *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+        (WNDPROC)(+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+          auto w = (win32_edge_engine *)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
           switch (msg) {
           case WM_SIZE:
             w->m_browser->resize(hwnd);
@@ -233,11 +233,13 @@ public:
           }
           return 0;
         });
+        
     RegisterClassEx(&wc);
-    m_window = CreateWindow("webview", "", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
-                            CW_USEDEFAULT, width, height, nullptr, nullptr,
-                            GetModuleHandle(nullptr), nullptr);
-    SetWindowLongPtr(m_window, GWLP_USERDATA, (LONG_PTR)this);
+
+    m_window = CreateWindowExW(WS_EX_APPWINDOW,L"webview", L"", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT,
+                            CW_USEDEFAULT, width, height, nullptr, nullptr,hInstance, this);
+
+    SetWindowLongPtrW(m_window, GWLP_USERDATA, (LONG_PTR)this);
 
     int scrWidth  = GetSystemMetrics(SM_CXSCREEN);
     int scrHeight = GetSystemMetrics(SM_CYSCREEN);
@@ -249,7 +251,6 @@ public:
 
     AdjustWindowRect(&rect, WS_OVERLAPPEDWINDOW, 0);
     MoveWindow(m_window,rect.left, rect.top, rect.right, rect.bottom,  1);// 居中
-    //SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_UNAWARE);
     ShowWindow(m_window, SW_SHOW);
     UpdateWindow(m_window);
     SetFocus(m_window);
@@ -282,6 +283,14 @@ public:
       }
     }
   }
+
+  LPWSTR to_lpwstr(const std::string s) {
+    int n = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, NULL, 0);
+    wchar_t *ws = new wchar_t[n];
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, ws, n);
+    return ws;
+  }
+
   void *window() { return (void *)m_window; }
   void hide() {
     ShowWindow(m_window, SW_HIDE);
@@ -298,7 +307,7 @@ public:
   }
 
   void set_title(const std::string title) {
-    SetWindowText(m_window, title.c_str());
+    SetWindowTextW(m_window, to_lpwstr(title));
   }
 
   void set_size(int width, int height, int hints) {
